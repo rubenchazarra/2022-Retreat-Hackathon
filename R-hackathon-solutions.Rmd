@@ -1,0 +1,88 @@
+## Problems
+
+### 1. Abstract problems
+
+#### a. Operating over groups
+
+*NOTE* --> I would make it less abstract, maybe with Aida's barcodes example
+
+Split a vector of length l into N group of equal size considering the last chunk may differ:
+
+```{r params}
+# generate vector
+l <- 473
+vec <- rpois(n = l, lambda = 5)
+# define group size
+group_size <- 20 
+```
+
+```{r solotuion 1 (https://stackoverflow.com/questions/3318333/split-a-vector-into-chunks) }
+split.vec <- function(vec, group_size){
+  # Split vector into chunks of equal size except last
+  ## Generate numeric index
+  x <- seq_along(vec)
+  ## Split vector by Group indexing generated with ceiling
+  split(vec, ceiling(x/group_size))
+}
+
+# Run
+split.vec(vec, group_size)
+```
+
+
+
+#### b. Operating over groups
+
+*NOTE* --> Maybe too easy 
+
+The iris dataset is a built-in dataset in R that contains measurements on 4 different attributes (in centimeters) for 50 flowers from 3 different Species (setosa, versicolor, virginica)
+```{r}
+data(iris)
+head(iris)
+```
+*Question*: 
+`Petal.Width` for **setosa** flowers has been annotated in inches by error. Considering 1 inch = 2.54 cm. Can you edit the `Petal.Width` for **setosa** flowers ?  
+```{r}
+iris[iris$Species == "setosa", "Petal.Width"] <- iris[iris$Species == "setosa", "Petal.Width"] * 2.54
+
+head(iris)
+```
+
+
+### 2. Pseudobulking a single-cell RNA-seq data matrix
+
+Single-cell counts matrices are of n genes x m cells. 
+
+Given the single-cell RNA-seq matrix in:  `/gpfs/projects/bsc83/Projects/RubenChazarra/1.Projects/4.Single-cell-AS/Zenodo-Randolph-Science-2021/inputs/1_calculate_pseudobulk/B_cluster_RNA_counts.rds` 
+And given the meta data in: 
+`/gpfs/projects/bsc83/Projects/RubenChazarra/1.Projects/4.Single-cell-AS/Zenodo-Randolph-Science-2021/inputs/1_calculate_pseudobulk/B_cluster_meta_data.txt`
+*Note* in the metadata df, each row corresponds to a cell, while each column to a meta data specification
+
+Propose a strategy to pseudobulk (aggregate) cells by sample id (`sample_condition`)
+
+```{r data}
+mat <- readRDS("/gpfs/projects/bsc83/Projects/RubenChazarra/1.Projects/4.Single-cell-AS/Zenodo-Randolph-Science-2021/inputs/1_calculate_pseudobulk/B_cluster_RNA_counts.rds")
+
+meta_data <- readRDS("/gpfs/projects/bsc83/Projects/RubenChazarra/1.Projects/4.Single-cell-AS/Zenodo-Randolph-Science-2021/inputs/1_calculate_pseudobulk/B_cluster_meta_data.rds")
+```
+
+*Note* Here we are using libraries! It would be nice to force people to use libraries, although this limits learning capacity!
+```{r solution (one of them)}
+sample_colname <- "sample_condition"
+
+# vector of sample ids of each cell
+ids <- meta_data[, sample_colname]
+# unique ids
+unique_id_list <- as.list(unique(ids))
+
+## Calculate pseudobulk by summing across all cells identified in each individual, cdt pair
+library(textTinyR)
+pseudobulk <- as.data.frame(lapply(unique_id_list, FUN = function(x){
+  sparse_Sums(mat[,ids == x, drop = FALSE], rowSums = TRUE)})
+  )
+# add sample names
+colnames(pseudobulk) <- unique_id_list
+# add gene names
+rownames(pseudobulk) <- rownames(mat)
+```
+
